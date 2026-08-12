@@ -23,11 +23,15 @@ If only one is present, use that one. If neither is present, this skill doesn't 
 ## Delegation commands
 
 ```bash
-copilot -p "<task spec>" --allow-all-tools
+copilot -p "<task spec>" --allow-all-tools --add-dir ~/.claude/delegation-logs
 agy-bridge --type search|code|analysis|review|implement -- "<task spec>"
 ```
 
 `agy-bridge --type search` defaults to a fast Gemini Flash model (good for web research); `code`/`implement`/`analysis`/`review` default to a Gemini Pro model (good for larger implementation/analysis work). See `agy-bridge --types` and `copilot help config` on the local machine for the current model list — do not assume model names are stable across installs or time.
+
+**`copilot` has its own path sandbox, separate from `--allow-all-tools`.** `--allow-all-tools` only waives per-tool confirmation prompts; it does not grant filesystem access outside the current project directory. Since the log folder (`~/.claude/delegation-logs/`) is deliberately outside the project by design, writes there fail with "Permission denied" unless the directory is explicitly added with `--add-dir ~/.claude/delegation-logs` (as in the command above). Confirmed by direct test on 2026-08-12: the first attempt without `--add-dir` failed to create the log file; adding it fixed it.
+
+Also: `--model <name>` must be a model actually authorized under the local Copilot org policy — the full model list in `copilot help config` is not a guarantee of availability (e.g. `gpt-5-mini` was rejected with "not available" under one org's policy while `claude-haiku-4.5` worked). If an explicit `--model` is rejected, fall back to `--model auto` or check what a bare test call resolves to before retrying.
 
 ## Log folder path
 
