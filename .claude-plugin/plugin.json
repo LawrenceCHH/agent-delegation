@@ -1,0 +1,11 @@
+{
+  "name": "agent-delegation",
+  "description": "Delegate implementation/research tasks from a top-level Claude Code session to locally installed CLI agents (GitHub Copilot CLI, Google Antigravity CLI/agy) via non-interactive, stateless calls, with a structured delegation-log convention for cross-session context.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Lawrence"
+  },
+  "license": "MIT",
+  "keywords": ["multi-agent", "delegation", "copilot", "agy", "gemini", "orchestration", "cli"],
+  "skills": ["./skills/agent-delegation"]
+}
