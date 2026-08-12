@@ -23,15 +23,35 @@ If only one is present, use that one. If neither is present, this skill doesn't 
 ## Delegation commands
 
 ```bash
-copilot -p "<task spec>" --allow-all-tools --add-dir ~/.claude/delegation-logs
-agy-bridge --type search|code|analysis|review|implement -- "<task spec>"
+copilot -p "<task spec>" --allow-all-tools --add-dir ~/.claude/delegation-logs --model <default: newest Claude Sonnet>
+agy-bridge --type search|code|analysis|review|implement --model <default: newest Gemini Flash> -- "<task spec>"
 ```
-
-`agy-bridge --type search` defaults to a fast Gemini Flash model (good for web research); `code`/`implement`/`analysis`/`review` default to a Gemini Pro model (good for larger implementation/analysis work). See `agy-bridge --types` and `copilot help config` on the local machine for the current model list — do not assume model names are stable across installs or time.
 
 **`copilot` has its own path sandbox, separate from `--allow-all-tools`.** `--allow-all-tools` only waives per-tool confirmation prompts; it does not grant filesystem access outside the current project directory. Since the log folder (`~/.claude/delegation-logs/`) is deliberately outside the project by design, writes there fail with "Permission denied" unless the directory is explicitly added with `--add-dir ~/.claude/delegation-logs` (as in the command above). Confirmed by direct test on 2026-08-12: the first attempt without `--add-dir` failed to create the log file; adding it fixed it.
 
-Also: `--model <name>` must be a model actually authorized under the local Copilot org policy — the full model list in `copilot help config` is not a guarantee of availability (e.g. `gpt-5-mini` was rejected with "not available" under one org's policy while `claude-haiku-4.5` worked). If an explicit `--model` is rejected, fall back to `--model auto` or check what a bare test call resolves to before retrying.
+### Default model selection
+
+Unless the task clearly needs something else (see carve-outs below), default to:
+
+| Executor | Default | Why |
+|---|---|---|
+| `agy` / `agy-bridge` | Newest available Gemini **Flash** model | Cheap/fast; matches this pattern's whole point of keeping delegated calls low-cost |
+| `copilot` | Newest available Claude **Sonnet** model | Mid-tier cost/quality balance — not the cheapest (Haiku), not the priciest (Opus) |
+
+Model names and version numbers are **not stable** — they change per machine, per org policy, and over time (already confirmed: `gpt-5-mini` was rejected as unauthorized on one org's Copilot while `claude-haiku-4.5` worked; agy's own model list also updates independently). Resolve "newest" at delegation time, don't hardcode a version string from this doc:
+
+```bash
+# newest Gemini Flash for agy — pick the highest-numbered gemini-*-flash-high entry
+agy models | grep flash-high
+
+# newest Claude Sonnet for copilot — pick the highest-numbered claude-sonnet-* entry
+copilot help config | grep -A30 '`model`:' | grep claude-sonnet
+```
+(As of 2026-08-12 on this machine these resolved to `gemini-3.6-flash-high` and `claude-sonnet-5` — treat as an example, not a value to copy forward.)
+
+`agy-bridge --type search` already resolves to a Flash-tier model by its own internal default (see `agy-bridge --types`), so an explicit `--model` is usually redundant there; `code`/`implement`/`analysis`/`review` internally default to a Pro-tier model instead — pass `--model <newest-flash>` explicitly to keep those on the cheap default too, unless the task is large/complex enough that the extra reasoning of Pro is worth the cost (e.g. a sprawling multi-file implementation, a genuinely hard bug) — in that case use Pro deliberately and note why in the delegation log's Task section.
+
+Also: `--model <name>` must be a model actually authorized under the local Copilot org policy — the full model list in `copilot help config` is not a guarantee of availability. If an explicit `--model` is rejected, fall back to `--model auto` or check what a bare test call resolves to before retrying.
 
 ## Log folder path
 

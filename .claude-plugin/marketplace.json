@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Delegate implementation/research tasks from a top-level Claude Code session to locally installed CLI agents (copilot, agy) via non-interactive calls, with a delegation-log convention.",
-    "version": "1.0.1"
+    "version": "1.0.2"
   },
   "plugins": [
     {
       "name": "agent-delegation",
       "source": "./",
       "description": "Non-interactive delegation to copilot/agy CLI agents, restricted to top-level sessions, with a log folder/filename/content convention for cross-session context.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "author": {
         "name": "Lawrence"
       },
