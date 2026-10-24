@@ -1,6 +1,6 @@
 ---
 name: agent-delegation
-description: "TOP-LEVEL SESSION ONLY — do not invoke from a subagent spawned via the Task/Agent tool; if you are such a subagent, suggest this in your report instead and let the parent session decide. Use when the top-level session (talking directly with the user) is about to hand an implementation or research task to a locally installed CLI agent — GitHub Copilot CLI (`copilot`) or Google Antigravity CLI (`agy`, via `agy-bridge`) — in non-interactive mode, or needs to read/write the delegation log for a task already handed off. Defines the exact command patterns, the log folder path formula, filename convention, and log content template so this stays consistent across machines and projects."
+description: "TOP-LEVEL SESSION ONLY — do not invoke from a subagent spawned via the Task/Agent tool; if you are such a subagent, suggest this in your report instead and let the parent session decide. Use when the top-level session (talking directly with the user) is about to hand an implementation or research task to a locally installed CLI agent — GitHub Copilot CLI (`copilot`) or Google Antigravity CLI (`agy`, directly or via the optional `agy-bridge` wrapper) — in non-interactive mode, or needs to read/write the delegation log for a task already handed off. Defines the exact command patterns, the log folder path formula, filename convention, and log content template so this stays consistent across machines and projects."
 ---
 
 # agent-delegation
@@ -13,19 +13,40 @@ This skill is for the **top-level session directly conversing with the user only
 
 ## Prerequisites
 
-Check both are installed before relying on this skill; not every machine will have both:
+Check which are installed before relying on this skill; not every machine will have all:
 ```bash
-command -v copilot   # GitHub Copilot CLI
-command -v agy-bridge # Google Antigravity CLI wrapper
+command -v copilot    # GitHub Copilot CLI
+command -v agy        # Google Antigravity CLI (required for agy delegation)
+command -v agy-bridge # optional wrapper; if absent, call `agy -p` directly
 ```
-If only one is present, use that one. If neither is present, this skill doesn't apply — do the work directly or tell the user.
+If only one executor is present, use that one. If none is present, this skill doesn't apply — do the work directly or tell the user.
 
-## Delegation commands
+## Two modes: Quick vs Full
+
+Pick the mode by task type — the log machinery below is only worth its cost when work changes files or must be resumed later.
+
+| Mode | Use for | Log? | Verification |
+|---|---|---|---|
+| **Quick** | Web search, read-only analysis, Q&A | No — stdout comes straight back into context | Require a source URL per conclusion in the prompt; spot-check the key ones yourself (WebFetch/WebSearch). A conclusion with no source is unverified. |
+| **Full** | Implementation, refactors, anything that modifies files or spans sessions | Yes — template, path and filename rules below | `git diff` / test output, then read the log |
+
+### Quick mode command (agy)
+
+```bash
+agy -p "<question>. Cite a source URL for every conclusion; say so explicitly if unsure." \
+    --model <newest Gemini Flash> --output-format text
+```
+No `--dangerously-skip-permissions`: in print mode agy denies tool calls lacking an allow rule and exits nonzero, which is the safe default for read-only work. Use `--output-format json` when you need to parse the result. Check the exit code and that stdout is non-empty.
+
+Known issue: agy 1.0.x `-p` could hang or print nothing when stdout was redirected/piped from a subprocess ([antigravity-cli#318](https://github.com/google-antigravity/antigravity-cli/issues/318)). Verified working through a pipe on 1.4.6 (2026-10-24); on older versions, run `agy update` first.
+
+## Delegation commands (Full mode)
 
 ```bash
 copilot -p "<task spec>" --allow-all-tools --add-dir ~/.claude/delegation-logs --model <default: newest Claude Sonnet>
-agy-bridge --type search|code|analysis|review|implement --model <default: newest Gemini Flash> -- "<task spec>"
+agy -p "<task spec>" --add-dir ~/.claude/delegation-logs --model <default: newest Gemini Flash>   # or: agy-bridge --type code|analysis|review|implement --model <...> -- "<task spec>"
 ```
+Full-mode agy needs write access (log file, edits): grant it with an allow rule, or `--dangerously-skip-permissions` only inside a sandbox/disposable environment.
 
 **`copilot` has its own path sandbox, separate from `--allow-all-tools`.** `--allow-all-tools` only waives per-tool confirmation prompts; it does not grant filesystem access outside the current project directory. Since the log folder (`~/.claude/delegation-logs/`) is deliberately outside the project by design, writes there fail with "Permission denied" unless the directory is explicitly added with `--add-dir ~/.claude/delegation-logs` (as in the command above). Confirmed by direct test on 2026-08-12: the first attempt without `--add-dir` failed to create the log file; adding it fixed it.
 
@@ -41,8 +62,9 @@ Unless the task clearly needs something else (see carve-outs below), default to:
 Model names and version numbers are **not stable** — they change per machine, per org policy, and over time (already confirmed: `gpt-5-mini` was rejected as unauthorized on one org's Copilot while `claude-haiku-4.5` worked; agy's own model list also updates independently). Resolve "newest" at delegation time, don't hardcode a version string from this doc:
 
 ```bash
-# newest Gemini Flash for agy — pick the highest-numbered gemini-*-flash-high entry
-agy models | grep flash-high
+# newest Gemini Flash for agy — pick the highest-numbered gemini-*-flash-* entry
+# (Quick mode: -medium or -low is fine; e.g. gemini-3.8-flash-medium)
+agy models | grep flash
 
 # newest Claude Sonnet for copilot — pick the highest-numbered claude-sonnet-* entry
 copilot help config | grep -A30 '`model`:' | grep claude-sonnet
