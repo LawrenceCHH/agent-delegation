@@ -8,7 +8,7 @@ Currently two — support depends on what's installed on the machine (check both
 
 | Executor | CLI | Invocation | Notes |
 |---|---|---|---|
-| `agy` | Google Antigravity CLI, via the `agy-bridge` wrapper | `agy-bridge --type search\|code\|analysis\|review\|implement -- "<prompt>"` | `search` defaults to a fast Gemini Flash model; `code`/`implement`/`analysis`/`review` default to a Gemini Pro model |
+| `agy` | Google Antigravity CLI (direct `agy -p`; `agy-bridge` wrapper optional) | Quick: `agy -p "<prompt>" --model <flash>`; wrapper: `agy-bridge --type search\|code\|analysis\|review\|implement -- "<prompt>"` | `search` defaults to a fast Gemini Flash model; `code`/`implement`/`analysis`/`review` default to a Gemini Pro model |
 | `copilot` | GitHub Copilot CLI | `copilot -p "<prompt>" --allow-all-tools` | Model selectable via `--model`; see `copilot help config` for the current list |
 
 Adding a new executor (e.g. `aider`) means: confirm it has a non-interactive/scriptable mode, add its invocation pattern to `skills/agent-delegation/SKILL.md`, and it inherits the same log convention below — no other changes needed.
